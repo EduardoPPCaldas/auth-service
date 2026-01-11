@@ -1,8 +1,7 @@
 package repository
 
 import (
-	"os/user"
-
+	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
 	"gorm.io/gorm"
 )
 
@@ -14,11 +13,15 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) Create(user *user.User) error {
-	return r.db.Create(user).Error
+func (r *UserRepository) Create(u *user.User) error {
+	return r.db.Create(u).Error
 }
 
 func (r *UserRepository) FindByEmail(email string) (*user.User, error) {
-	var user user.User
-	return &user, nil
+	var u user.User
+	result := r.db.Where("email = ?", email).First(&u)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &u, nil
 }
