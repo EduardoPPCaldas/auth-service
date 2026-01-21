@@ -21,12 +21,17 @@ func NewTokenGenerator() TokenGenerator {
 }
 
 func (t *tokenGenerator) GenerateToken(user *user.User) (string, error) {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return "", fmt.Errorf("JWT_SECRET environment variable is not set")
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.ID.String(),
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	tokenString, err := token.SignedString([]byte(secret))
 
 	if err != nil {
 		return "", fmt.Errorf("error signing token: %w", err)

@@ -7,8 +7,8 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
+	Email     string    `json:"email" gorm:"uniqueIndex;not null"`
 	Password  *string   `json:"password"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

@@ -1,0 +1,132 @@
+package repository
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	postgrescontainer "github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
+
+func setupIntegrationDB(t *testing.T) (*gorm.DB, func()) {
+	ctx := context.Background()
+
+	postgresContainer, err := postgrescontainer.RunContainer(ctx,
+		testcontainers.WithImage("postgres:16-alpine"),
+		postgrescontainer.WithDatabase("testdb"),
+		postgrescontainer.WithUsername("testuser"),
+		postgrescontainer.WithPassword("testpass"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(60*time.Second),
+		),
+	)
+	require.NoError(t, err)
+
+	connStr, err := postgresContainer.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+
+	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&user.User{})
+	require.NoError(t, err)
+
+	cleanup := func() {
+		if err := postgresContainer.Terminate(ctx); err != nil {
+			t.Logf("Failed to terminate container: %v", err)
+		}
+	}
+
+	return db, cleanup
+}
+
+func TestUserRepository_Integration_Create(t *testing.T) {
+	// Arrange
+	db, cleanup := setupIntegrationDB(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+	testUser := user.New("integration@example.com", nil)
+
+	// Act
+	err := repo.Create(testUser)
+
+	// Assert
+	require.NoError(t, err)
+
+	var foundUser user.User
+	err = db.First(&foundUser, "id = ?", testUser.ID).Error
+	require.NoError(t, err)
+	assert.Equal(t, testUser.Email, foundUser.Email)
+	assert.Equal(t, testUser.ID, foundUser.ID)
+}
+
+func TestUserRepository_Integration_FindByEmail(t *testing.T) {
+	// Arrange
+	db, cleanup := setupIntegrationDB(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+	testUser := user.New("findtest@example.com", nil)
+
+	err := db.Create(testUser).Error
+	require.NoError(t, err)
+
+	// Act
+	foundUser, err := repo.FindByEmail("findtest@example.com")
+
+	// Assert
+	require.NoError(t, err)
+	assert.NotNil(t, foundUser)
+	assert.Equal(t, testUser.Email, foundUser.Email)
+	assert.Equal(t, testUser.ID, foundUser.ID)
+}
+
+func TestUserRepository_Integration_CreateAndFind(t *testing.T) {
+	// Arrange
+	db, cleanup := setupIntegrationDB(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+	testUser := user.New("createfind@example.com", nil)
+
+	// Act - Create
+	err := repo.Create(testUser)
+	require.NoError(t, err)
+
+	// Act - Find
+	foundUser, err := repo.FindByEmail("createfind@example.com")
+
+	// Assert
+	require.NoError(t, err)
+	assert.NotNil(t, foundUser)
+	assert.Equal(t, testUser.Email, foundUser.Email)
+	assert.Equal(t, testUser.ID, foundUser.ID)
+}
+
+func TestUserRepository_Integration_DuplicateEmail(t *testing.T) {
+	// Arrange
+	db, cleanup := setupIntegrationDB(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+	testUser1 := user.New("duplicate@example.com", nil)
+	testUser2 := user.New("duplicate@example.com", nil)
+
+	// Act
+	err1 := repo.Create(testUser1)
+	err2 := repo.Create(testUser2)
+
+	// Assert
+	require.NoError(t, err1)
+	assert.Error(t, err2) // Should fail due to unique constraint (if enabled)
+}

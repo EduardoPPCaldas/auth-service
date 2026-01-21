@@ -45,12 +45,9 @@ func (u *LoginWithGoogleUseCase) Execute(ctx context.Context, idToken string) (s
 			return "", fmt.Errorf("failed to create user: %w", err)
 		}
 		appUser = newUser
-	}
-	if err != nil {
+	} else if err != nil {
 		return "", fmt.Errorf("failed to find user: %w", err)
-	}
-
-	if existingUser != nil {
+	} else if existingUser != nil {
 		appUser = existingUser
 	}
 

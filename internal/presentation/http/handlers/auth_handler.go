@@ -1,18 +1,30 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/dto"
-	"github.com/EduardoPPCaldas/auth-service/internal/application/user/usecases"
 	"github.com/labstack/echo/v4"
 )
 
 type AuthHandler struct {
-	createUserUseCase      *usecases.CreateUserUseCase
-	loginUserUseCase       *usecases.LoginUserUseCase
-	loginWithGoogleUseCase *usecases.LoginWithGoogleUseCase
+	createUserUseCase      CreateUserUseCase
+	loginUserUseCase       LoginUserUseCase
+	loginWithGoogleUseCase LoginWithGoogleUseCase
 	googleOAuthService     GoogleOAuthService
+}
+
+type CreateUserUseCase interface {
+	Execute(email, password string) (string, error)
+}
+
+type LoginUserUseCase interface {
+	Execute(email, password string) (string, error)
+}
+
+type LoginWithGoogleUseCase interface {
+	Execute(ctx context.Context, idToken string) (string, error)
 }
 
 type GoogleOAuthService interface {
@@ -20,9 +32,9 @@ type GoogleOAuthService interface {
 }
 
 func NewAuthHandler(
-	createUserUseCase *usecases.CreateUserUseCase,
-	loginUserUseCase *usecases.LoginUserUseCase,
-	loginWithGoogleUseCase *usecases.LoginWithGoogleUseCase,
+	createUserUseCase CreateUserUseCase,
+	loginUserUseCase LoginUserUseCase,
+	loginWithGoogleUseCase LoginWithGoogleUseCase,
 	googleOAuthService GoogleOAuthService,
 ) *AuthHandler {
 	return &AuthHandler{
