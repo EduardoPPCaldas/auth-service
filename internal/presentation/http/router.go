@@ -8,6 +8,12 @@ import (
 
 // SetupRoutes configures all routes for the Echo instance
 func SetupRoutes(e *echo.Echo, authHandler *handlers.AuthHandler) {
+	// Swagger/OpenAPI documentation
+	swaggerHandler := handlers.NewSwaggerHandler()
+	e.GET("/swagger.json", swaggerHandler.GetSwaggerJSON)
+	e.GET("/swagger", swaggerHandler.GetSwaggerUI)
+	e.GET("/swagger/", swaggerHandler.GetSwaggerUI)
+
 	// Routes
 	v1 := e.Group("/api/v1")
 	auth := v1.Group("/auth")

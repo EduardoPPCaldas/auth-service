@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "docker: start debug container",
+            "type": "shell",
+            "command": "docker-compose -f docker-compose.dev.yml up -d app",
+            "problemMatcher": []
+        },
+        {
+            "label": "docker: stop debug container",
+            "type": "shell",
+            "command": "docker-compose -f docker-compose.dev.yml down",
+            "problemMatcher": []
+        }
+    ]
+}

@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: auth-service-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: authdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d authdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: auth-service-app
+    ports:
+      - "8080:8080"
+      - "2345:2345"  # Delve debugger port
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/authdb?sslmode=disable
+      - PORT=8080
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Starting Delve debugger...' &&
+        dlv debug ./cmd/api/main.go --listen=:2345 --headless=true --api-version=2 --accept-multiclient
+      "
+
+volumes:
+  postgres_data:
+    driver: local
+  go-mod-cache:
+    driver: local
+

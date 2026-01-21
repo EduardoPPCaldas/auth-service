@@ -1,0 +1,36 @@
+meta {
+  name: Login With Google
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login/google
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "id_token": "google-id-token-here"
+  }
+}
+
+docs {
+  # Login With Google
+
+  Authenticate a user using Google OAuth ID token.
+
+  ## Request Body
+  - `id_token` (string, required): Google OAuth ID token
+
+  ## Response
+  - `200 OK`: Returns JWT token
+  - `400 Bad Request`: Invalid request body or validation error
+  - `401 Unauthorized`: Invalid or expired Google token
+}
+

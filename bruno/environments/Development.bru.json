@@ -1,0 +1,10 @@
+{
+    "name": "Development",
+    "variables": [
+        {
+            "name": "baseUrl",
+            "value": "http://localhost:8080",
+            "enabled": true
+        }
+    ]
+}

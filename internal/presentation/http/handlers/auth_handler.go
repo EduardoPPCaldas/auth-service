@@ -105,9 +105,9 @@ func (h *AuthHandler) LoginWithGoogle(c echo.Context) error {
 	return c.JSON(http.StatusOK, dto.AuthResponse{Token: token})
 }
 
-// ChallengeGoogleAuth handles Google OAuth challenge (returns OAuth URL)
+// ChallengeGoogleAuth handles Google OAuth challenge (redirects to OAuth URL)
 // GET /api/v1/auth/google/challenge
 func (h *AuthHandler) ChallengeGoogleAuth(c echo.Context) error {
 	authURL := h.googleOAuthService.GetAuthURL()
-	return c.JSON(http.StatusOK, dto.GoogleOAuthChallengeResponse{AuthURL: authURL})
+	return c.Redirect(http.StatusFound, authURL)
 }

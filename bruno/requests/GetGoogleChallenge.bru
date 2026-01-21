@@ -1,0 +1,26 @@
+meta {
+  name: Get Google Challenge
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/auth/google/challenge
+  body: none
+  auth: none
+}
+
+docs {
+  # Get Google OAuth Challenge
+
+  Get the Google OAuth authorization URL for initiating the OAuth flow.
+
+  ## Response
+  - `200 OK`: Returns Google OAuth authorization URL
+    ```json
+    {
+      "auth_url": "https://accounts.google.com/oauth/authorize?..."
+    }
+    ```
+}
+

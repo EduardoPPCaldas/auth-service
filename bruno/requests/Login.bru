@@ -1,0 +1,38 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "user@example.com",
+    "password": "password123"
+  }
+}
+
+docs {
+  # Login User
+
+  Authenticate a user with email and password.
+
+  ## Request Body
+  - `email` (string, required): User email address
+  - `password` (string, required): User password
+
+  ## Response
+  - `200 OK`: Returns JWT token
+  - `400 Bad Request`: Invalid request body or validation error
+  - `401 Unauthorized`: Invalid credentials
+}
+
