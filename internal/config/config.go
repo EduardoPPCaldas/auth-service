@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -24,9 +25,22 @@ type Config struct {
 	GoogleRedirectURI  string
 	GoogleCallbackURL  string
 	OAuthState         string
+	JWTRefreshSecret   string
 }
 
+var (
+	instance *Config
+	once     sync.Once
+)
+
 func Load() *Config {
+	once.Do(func() {
+		instance = loadConfig()
+	})
+	return instance
+}
+
+func loadConfig() *Config {
 	// Database
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
@@ -61,47 +75,6 @@ func Load() *Config {
 	oauthState := os.Getenv("OAUTH_STATE")
 
 	return &Config{
-		DatabaseURL:         dbURL,
-		Port:              port,
-		JWTSecret:         jwtSecret,
-		JWTRefreshSecret:    jwtRefreshSecret,
-		AccessExpiry:        accessExpiry,
-		RefreshExpiry:        refreshExpiry,
-		GoogleClientID:        googleClientID,
-		GoogleClientSecret:     googleClientSecret,
-		GoogleRedirectURI:      googleRedirectURI,
-		GoogleCallbackURL:     googleCallbackURL,
-		OAuthState:          oauthState,
-	}
-}
-
-	// Server
-	if port == "" {
-		port = "8080"
-	}
-
-	// JWT
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		panic("JWT_SECRET environment variable is required")
-	}
-
-	accessExpiry, _ := time.ParseDuration(getEnvOrDefault("JWT_ACCESS_EXPIRY", "24h"))
-	refreshExpiry, _ := time.ParseDuration(getEnvOrDefault("JWT_REFRESH_EXPIRY", "168h"))
-
-	// JWT Refresh Secret
-	jwtRefreshSecret := os.Getenv("JWT_REFRESH_SECRET")
-
-	// Google OAuth
-	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
-	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
-	googleRedirectURI := os.Getenv("GOOGLE_REDIRECT_URI")
-
-	// Additional OAuth configuration (from existing patterns)
-	googleCallbackURL := os.Getenv("GOOGLE_CALLBACK_URL")
-	oauthState := os.Getenv("OAUTH_STATE")
-
-	return &Config{
 		DatabaseURL:        dbURL,
 		Port:               port,
 		JWTSecret:          jwtSecret,
@@ -113,35 +86,6 @@ func Load() *Config {
 		GoogleRedirectURI:  googleRedirectURI,
 		GoogleCallbackURL:  googleCallbackURL,
 		OAuthState:         oauthState,
-	}
-
-	// Server
-
-	port := os.Getenv("PORT")
-
-	// JWT
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		panic("JWT_SECRET environment variable is required")
-	}
-
-	accessExpiry, _ := time.ParseDuration(getEnvOrDefault("JWT_ACCESS_EXPIRY", "24h"))
-	refreshExpiry, _ := time.ParseDuration(getEnvOrDefault("JWT_REFRESH_EXPIRY", "168h"))
-
-	// Google OAuth
-	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
-	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
-	googleRedirectURI := os.Getenv("GOOGLE_REDIRECT_URI")
-
-	return &Config{
-		DatabaseURL:        dbURL,
-		Port:               port,
-		JWTSecret:          jwtSecret,
-		AccessExpiry:       accessExpiry,
-		RefreshExpiry:      refreshExpiry,
-		GoogleClientID:     googleClientID,
-		GoogleClientSecret: googleClientSecret,
-		GoogleRedirectURI:  googleRedirectURI,
 	}
 }
 
