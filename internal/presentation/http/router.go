@@ -21,6 +21,9 @@ func SetupRoutes(e *echo.Echo, authHandler *handlers.AuthHandler) {
 		auth.POST("/register", authHandler.CreateUser)
 		auth.POST("/login", authHandler.LoginUser)
 		auth.POST("/login/google", authHandler.LoginWithGoogle)
+		auth.POST("/refresh", authHandler.RefreshToken)
+		auth.POST("/logout", authHandler.Logout)
+		auth.POST("/logout-all", authHandler.LogoutAll)
 		auth.GET("/google/challenge", authHandler.ChallengeGoogleAuth)
 	}
 }

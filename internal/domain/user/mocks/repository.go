@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -17,6 +18,14 @@ func (m *MockUserRepository) Create(u *user.User) error {
 
 func (m *MockUserRepository) FindByEmail(email string) (*user.User, error) {
 	args := m.Called(email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*user.User), args.Error(1)
+}
+
+func (m *MockUserRepository) FindByID(id uuid.UUID) (*user.User, error) {
+	args := m.Called(id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

@@ -75,6 +75,8 @@ func setupIntegrationServer(t *testing.T) (*echo.Echo, func()) {
 		createUserUseCase,
 		loginUserUseCase,
 		loginWithGoogleUseCase,
+		nil, // RefreshTokenUseCase - not needed for these integration tests
+		nil, // LogoutUseCase - not needed for these integration tests
 		googleOAuthService,
 	)
 
@@ -126,7 +128,7 @@ func TestAuthIntegration_Register_Success(t *testing.T) {
 	var response dto.AuthResponse
 	err := json.Unmarshal(rec.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.NotEmpty(t, response.Token)
+	assert.NotEmpty(t, response.AccessToken)
 }
 
 func TestAuthIntegration_Register_Then_Login(t *testing.T) {
@@ -154,7 +156,7 @@ func TestAuthIntegration_Register_Then_Login(t *testing.T) {
 	var registerResponse dto.AuthResponse
 	err := json.Unmarshal(registerRec.Body.Bytes(), &registerResponse)
 	require.NoError(t, err)
-	require.NotEmpty(t, registerResponse.Token)
+	require.NotEmpty(t, registerResponse.AccessToken)
 
 	// Login
 	loginReq := dto.LoginUserRequest{
@@ -176,7 +178,7 @@ func TestAuthIntegration_Register_Then_Login(t *testing.T) {
 	var loginResponse dto.AuthResponse
 	err = json.Unmarshal(loginRec.Body.Bytes(), &loginResponse)
 	require.NoError(t, err)
-	assert.NotEmpty(t, loginResponse.Token)
+	assert.NotEmpty(t, loginResponse.AccessToken)
 	// Tokens may be the same if generated at the same time with the same expiration
 	// What's important is that login succeeds and returns a valid token
 }

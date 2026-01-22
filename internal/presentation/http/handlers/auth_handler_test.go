@@ -78,6 +78,8 @@ func TestAuthHandler_CreateUser_Success(t *testing.T) {
 		mockCreateUser,
 		mockLoginUser,
 		mockLoginWithGoogle,
+		nil, // RefreshTokenUseCase - not needed for this test
+		nil, // LogoutUseCase - not needed for this test
 		mockGoogleOAuth,
 	)
 
@@ -106,7 +108,7 @@ func TestAuthHandler_CreateUser_Success(t *testing.T) {
 	var response dto.AuthResponse
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, token, response.Token)
+	assert.Equal(t, token, response.AccessToken)
 
 	mockCreateUser.AssertExpectations(t)
 }
@@ -122,6 +124,8 @@ func TestAuthHandler_CreateUser_InvalidRequest(t *testing.T) {
 		mockCreateUser,
 		mockLoginUser,
 		mockLoginWithGoogle,
+		nil, // RefreshTokenUseCase - not needed for this test
+		nil, // LogoutUseCase - not needed for this test
 		mockGoogleOAuth,
 	)
 
@@ -157,6 +161,8 @@ func TestAuthHandler_CreateUser_UseCaseError(t *testing.T) {
 		mockCreateUser,
 		mockLoginUser,
 		mockLoginWithGoogle,
+		nil, // RefreshTokenUseCase - not needed for this test
+		nil, // LogoutUseCase - not needed for this test
 		mockGoogleOAuth,
 	)
 
@@ -194,6 +200,8 @@ func TestAuthHandler_LoginUser_Success(t *testing.T) {
 		mockCreateUser,
 		mockLoginUser,
 		mockLoginWithGoogle,
+		nil, // RefreshTokenUseCase - not needed for this test
+		nil, // LogoutUseCase - not needed for this test
 		mockGoogleOAuth,
 	)
 
@@ -222,7 +230,7 @@ func TestAuthHandler_LoginUser_Success(t *testing.T) {
 	var response dto.AuthResponse
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Equal(t, token, response.Token)
+	assert.Equal(t, token, response.AccessToken)
 
 	mockLoginUser.AssertExpectations(t)
 }
@@ -238,6 +246,8 @@ func TestAuthHandler_LoginUser_InvalidCredentials(t *testing.T) {
 		mockCreateUser,
 		mockLoginUser,
 		mockLoginWithGoogle,
+		nil, // RefreshTokenUseCase - not needed for this test
+		nil, // LogoutUseCase - not needed for this test
 		mockGoogleOAuth,
 	)
 
@@ -275,6 +285,8 @@ func TestAuthHandler_ChallengeGoogleAuth_Success(t *testing.T) {
 		mockCreateUser,
 		mockLoginUser,
 		mockLoginWithGoogle,
+		nil, // RefreshTokenUseCase - not needed for this test
+		nil, // LogoutUseCase - not needed for this test
 		mockGoogleOAuth,
 	)
 
@@ -291,12 +303,8 @@ func TestAuthHandler_ChallengeGoogleAuth_Success(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
-
-	var response dto.GoogleOAuthChallengeResponse
-	err = json.Unmarshal(rec.Body.Bytes(), &response)
-	require.NoError(t, err)
-	assert.Equal(t, authURL, response.AuthURL)
+	assert.Equal(t, http.StatusFound, rec.Code)
+	assert.Equal(t, authURL, rec.Header().Get("Location"))
 
 	mockGoogleOAuth.AssertExpectations(t)
 }

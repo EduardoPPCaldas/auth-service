@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/services/token"
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/usecases"
+	tokenDomain "github.com/EduardoPPCaldas/auth-service/internal/domain/token"
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
 	"github.com/EduardoPPCaldas/auth-service/internal/infrastructure/oauth/google"
 	postgresRepo "github.com/EduardoPPCaldas/auth-service/internal/infrastructure/postgres/repository"
@@ -33,22 +35,34 @@ func main() {
 
 	// Initialize repositories
 	userRepo := postgresRepo.NewUserRepository(db)
+	refreshTokenRepo := postgresRepo.NewRefreshTokenRepository(db)
 
 	// Initialize services
 	tokenGenerator := token.NewTokenGenerator()
 	googleValidator := google.NewGoogleTokenValidator(os.Getenv("GOOGLE_CLIENT_ID"))
 	googleOAuthService := google.NewGoogleOAuthChallengeService("", "", "")
 
+	// Parse time durations from environment
+	accessExpiry, _ := time.ParseDuration(getEnvOrDefault("JWT_ACCESS_EXPIRY", "24h"))
+	refreshExpiry, _ := time.ParseDuration(getEnvOrDefault("JWT_REFRESH_EXPIRY", "168h"))
+
+	// Initialize additional services
+	refreshTokenService := token.NewRefreshTokenService(refreshTokenRepo, userRepo, refreshExpiry)
+
 	// Initialize use cases
 	createUserUseCase := usecases.NewCreateUserUseCase(userRepo, tokenGenerator)
 	loginUserUseCase := usecases.NewLoginUserUseCase(userRepo, tokenGenerator)
 	loginWithGoogleUseCase := usecases.NewLoginWithGoogleUseCase(userRepo, tokenGenerator, googleValidator)
+	refreshTokenUseCase := usecases.NewRefreshTokenUseCase(userRepo, tokenGenerator, refreshTokenService, accessExpiry)
+	logoutUseCase := usecases.NewLogoutUseCase(userRepo, refreshTokenService)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(
 		createUserUseCase,
 		loginUserUseCase,
 		loginWithGoogleUseCase,
+		refreshTokenUseCase,
+		logoutUseCase,
 		googleOAuthService,
 	)
 
@@ -85,12 +99,19 @@ func initDatabase() (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Auto-migrate User entity
-	if err := db.AutoMigrate(&user.User{}); err != nil {
+	// Auto-migrate entities
+	if err := db.AutoMigrate(&user.User{}, &tokenDomain.RefreshToken{}); err != nil {
 		return nil, fmt.Errorf("failed to auto-migrate: %w", err)
 	}
 
 	return db, nil
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
 // CustomValidator is a custom validator for Echo
@@ -98,6 +119,6 @@ type CustomValidator struct {
 	validator *validator.Validate
 }
 
-func (cv *CustomValidator) Validate(i interface{}) error {
+func (cv *CustomValidator) Validate(i any) error {
 	return cv.validator.Struct(i)
 }

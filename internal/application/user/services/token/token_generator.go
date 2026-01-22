@@ -7,6 +7,7 @@ import (
 
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type tokenGenerator struct {
@@ -14,6 +15,7 @@ type tokenGenerator struct {
 
 type TokenGenerator interface {
 	GenerateToken(user *user.User) (string, error)
+	ExtractUserID(tokenString string) (uuid.UUID, error)
 }
 
 func NewTokenGenerator() TokenGenerator {
@@ -38,4 +40,38 @@ func (t *tokenGenerator) GenerateToken(user *user.User) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+func (t *tokenGenerator) ExtractUserID(tokenString string) (uuid.UUID, error) {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return uuid.Nil, fmt.Errorf("JWT_SECRET environment variable is not set")
+	}
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		userIDStr, ok := claims["sub"].(string)
+		if !ok {
+			return uuid.Nil, fmt.Errorf("user ID not found in token claims")
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("invalid user ID format: %w", err)
+		}
+
+		return userID, nil
+	}
+
+	return uuid.Nil, fmt.Errorf("invalid token")
 }
