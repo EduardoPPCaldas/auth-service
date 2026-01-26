@@ -44,7 +44,7 @@ func loadConfig() *Config {
 	// Database
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://user:password@localhost:5432/authdb?sslmode=disable"
+		panic("DATABASE_URL environment variable is required")
 	}
 
 	// Server

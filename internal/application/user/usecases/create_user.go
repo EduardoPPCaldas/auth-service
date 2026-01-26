@@ -6,6 +6,7 @@ import (
 
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/services/token"
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
+	"github.com/samber/lo"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -37,9 +38,7 @@ func (u *CreateUserUseCase) Execute(email, password string) (string, error) {
 		return "", fmt.Errorf("error hashing password: %w", err)
 	}
 
-	stringPassword := string(hashedPassword)
-
-	user := user.New(email, &stringPassword)
+	user := user.New(email, lo.ToPtr(string(hashedPassword)))
 	err = u.userRepository.Create(user)
 	if err != nil {
 		return "", fmt.Errorf("error creating user: %w", err)
