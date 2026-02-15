@@ -40,8 +40,8 @@ func TestLoginWithGoogleUseCase_Execute_NewUser_WithRBAC(t *testing.T) {
 
 	mockGoogleValidator.On("Validate", ctx, idToken).Return(googleUser, nil)
 	mockRepo.On("FindByEmail", email).Return(nil, gorm.ErrRecordNotFound)
-	mockRoleRepo.On("IsRBACEnabled").Return(true)
-	mockRoleRepo.On("FindOrCreateDefault").Return(defaultRole, nil)
+	mockRoleRepo.On("IsRBACEnabled", ctx).Return(true)
+	mockRoleRepo.On("FindOrCreateDefault", ctx).Return(defaultRole, nil)
 	mockRepo.On("Create", mock.AnythingOfType("*user.User")).Return(nil)
 	mockTokenGen.On("GenerateToken", mock.AnythingOfType("*user.User")).Return(expectedToken, nil)
 
@@ -78,7 +78,7 @@ func TestLoginWithGoogleUseCase_Execute_NewUser_WithoutRBAC(t *testing.T) {
 
 	mockGoogleValidator.On("Validate", ctx, idToken).Return(googleUser, nil)
 	mockRepo.On("FindByEmail", email).Return(nil, gorm.ErrRecordNotFound)
-	mockRoleRepo.On("IsRBACEnabled").Return(false)
+	mockRoleRepo.On("IsRBACEnabled", ctx).Return(false)
 	mockRepo.On("Create", mock.AnythingOfType("*user.User")).Return(nil)
 	mockTokenGen.On("GenerateToken", mock.AnythingOfType("*user.User")).Return(expectedToken, nil)
 
@@ -183,8 +183,8 @@ func TestLoginWithGoogleUseCase_Execute_CreateError_WithRBAC(t *testing.T) {
 
 	mockGoogleValidator.On("Validate", ctx, idToken).Return(googleUser, nil)
 	mockRepo.On("FindByEmail", email).Return(nil, gorm.ErrRecordNotFound)
-	mockRoleRepo.On("IsRBACEnabled").Return(true)
-	mockRoleRepo.On("FindOrCreateDefault").Return(defaultRole, nil)
+	mockRoleRepo.On("IsRBACEnabled", ctx).Return(true)
+	mockRoleRepo.On("FindOrCreateDefault", ctx).Return(defaultRole, nil)
 	mockRepo.On("Create", mock.AnythingOfType("*user.User")).Return(createError)
 
 	// Act

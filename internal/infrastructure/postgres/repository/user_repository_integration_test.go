@@ -43,7 +43,7 @@ func setupIntegrationDB(t *testing.T) (*gorm.DB, func()) {
 
 	// Seed default roles
 	roleRepo := NewRoleRepository(db)
-	err = roleRepo.SeedRoles()
+	err = roleRepo.SeedRoles(ctx)
 	require.NoError(t, err)
 
 	cleanup := func() {
@@ -57,13 +57,14 @@ func setupIntegrationDB(t *testing.T) (*gorm.DB, func()) {
 
 func TestUserRepository_Integration_Create(t *testing.T) {
 	// Arrange
+	ctx := context.Background()
 	db, cleanup := setupIntegrationDB(t)
 	defer cleanup()
 
 	repo := NewUserRepository(db)
 	roleRepo := NewRoleRepository(db)
 
-	defaultRole, err := roleRepo.FindByName(role.RoleUser)
+	defaultRole, err := roleRepo.FindByName(ctx, role.RoleUser)
 	require.NoError(t, err)
 
 	testUser := user.New("integration@example.com", nil)
@@ -85,13 +86,14 @@ func TestUserRepository_Integration_Create(t *testing.T) {
 
 func TestUserRepository_Integration_FindByEmail(t *testing.T) {
 	// Arrange
+	ctx := context.Background()
 	db, cleanup := setupIntegrationDB(t)
 	defer cleanup()
 
 	repo := NewUserRepository(db)
 	roleRepo := NewRoleRepository(db)
 
-	defaultRole, err := roleRepo.FindByName(role.RoleUser)
+	defaultRole, err := roleRepo.FindByName(ctx, role.RoleUser)
 	require.NoError(t, err)
 
 	testUser := user.New("findtest@example.com", nil)
@@ -113,13 +115,14 @@ func TestUserRepository_Integration_FindByEmail(t *testing.T) {
 
 func TestUserRepository_Integration_CreateAndFind(t *testing.T) {
 	// Arrange
+	ctx := context.Background()
 	db, cleanup := setupIntegrationDB(t)
 	defer cleanup()
 
 	repo := NewUserRepository(db)
 	roleRepo := NewRoleRepository(db)
 
-	defaultRole, err := roleRepo.FindByName(role.RoleUser)
+	defaultRole, err := roleRepo.FindByName(ctx, role.RoleUser)
 	require.NoError(t, err)
 
 	testUser := user.New("createfind@example.com", nil)
@@ -142,13 +145,14 @@ func TestUserRepository_Integration_CreateAndFind(t *testing.T) {
 
 func TestUserRepository_Integration_DuplicateEmail(t *testing.T) {
 	// Arrange
+	ctx := context.Background()
 	db, cleanup := setupIntegrationDB(t)
 	defer cleanup()
 
 	repo := NewUserRepository(db)
 	roleRepo := NewRoleRepository(db)
 
-	defaultRole, err := roleRepo.FindByName(role.RoleUser)
+	defaultRole, err := roleRepo.FindByName(ctx, role.RoleUser)
 	require.NoError(t, err)
 
 	testUser1 := user.New("duplicate@example.com", nil)

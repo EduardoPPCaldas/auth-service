@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -26,7 +27,7 @@ func NewCreateUserUseCase(userRepository user.UserRepository, roleRepository rol
 	}
 }
 
-func (u *CreateUserUseCase) Execute(email, password string) (string, error) {
+func (u *CreateUserUseCase) Execute(ctx context.Context, email, password string) (string, error) {
 	existingUser, err := u.userRepository.FindByEmail(email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", fmt.Errorf("error creating user: %w", err)
@@ -44,8 +45,8 @@ func (u *CreateUserUseCase) Execute(email, password string) (string, error) {
 	newUser := user.New(email, lo.ToPtr(string(hashedPassword)))
 
 	// Only assign role if RBAC is enabled
-	if u.roleRepository.IsRBACEnabled() {
-		defaultRole, err := u.roleRepository.FindOrCreateDefault()
+	if u.roleRepository.IsRBACEnabled(ctx) {
+		defaultRole, err := u.roleRepository.FindOrCreateDefault(ctx)
 		if err != nil {
 			return "", fmt.Errorf("error finding default role: %w", err)
 		}

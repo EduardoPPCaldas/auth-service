@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -40,7 +41,7 @@ func main() {
 	refreshTokenRepo := postgresRepo.NewRefreshTokenRepository(db)
 
 	// Seed default roles
-	if err := roleRepo.SeedRoles(); err != nil {
+	if err := roleRepo.SeedRoles(context.Background()); err != nil {
 		log.Fatalf("Failed to seed roles: %v", err)
 	}
 	log.Println("Roles seeded successfully")

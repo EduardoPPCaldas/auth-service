@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -23,19 +24,20 @@ func TestCreateUserUseCase_Execute_Success_WithRBAC(t *testing.T) {
 
 	useCase := NewCreateUserUseCase(mockRepo, mockRoleRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "password123"
 	expectedToken := "jwt-token-here"
 	defaultRole := role.NewUserRole()
 
 	mockRepo.On("FindByEmail", email).Return(nil, gorm.ErrRecordNotFound)
-	mockRoleRepo.On("IsRBACEnabled").Return(true)
-	mockRoleRepo.On("FindOrCreateDefault").Return(defaultRole, nil)
+	mockRoleRepo.On("IsRBACEnabled", ctx).Return(true)
+	mockRoleRepo.On("FindOrCreateDefault", ctx).Return(defaultRole, nil)
 	mockRepo.On("Create", mock.AnythingOfType("*user.User")).Return(nil)
 	mockTokenGen.On("GenerateToken", mock.AnythingOfType("*user.User")).Return(expectedToken, nil)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.NoError(t, err)
@@ -53,17 +55,18 @@ func TestCreateUserUseCase_Execute_Success_WithoutRBAC(t *testing.T) {
 
 	useCase := NewCreateUserUseCase(mockRepo, mockRoleRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "password123"
 	expectedToken := "jwt-token-here"
 
 	mockRepo.On("FindByEmail", email).Return(nil, gorm.ErrRecordNotFound)
-	mockRoleRepo.On("IsRBACEnabled").Return(false)
+	mockRoleRepo.On("IsRBACEnabled", ctx).Return(false)
 	mockRepo.On("Create", mock.AnythingOfType("*user.User")).Return(nil)
 	mockTokenGen.On("GenerateToken", mock.AnythingOfType("*user.User")).Return(expectedToken, nil)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.NoError(t, err)
@@ -81,6 +84,7 @@ func TestCreateUserUseCase_Execute_UserAlreadyExists(t *testing.T) {
 
 	useCase := NewCreateUserUseCase(mockRepo, mockRoleRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "password123"
 	existingUser := &user.User{
@@ -91,7 +95,7 @@ func TestCreateUserUseCase_Execute_UserAlreadyExists(t *testing.T) {
 	mockRepo.On("FindByEmail", email).Return(existingUser, nil)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.Error(t, err)
@@ -109,6 +113,7 @@ func TestCreateUserUseCase_Execute_RepositoryError(t *testing.T) {
 
 	useCase := NewCreateUserUseCase(mockRepo, mockRoleRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "password123"
 	repoError := errors.New("database connection failed")
@@ -116,7 +121,7 @@ func TestCreateUserUseCase_Execute_RepositoryError(t *testing.T) {
 	mockRepo.On("FindByEmail", email).Return(nil, repoError)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.Error(t, err)
@@ -134,18 +139,19 @@ func TestCreateUserUseCase_Execute_CreateError_WithRBAC(t *testing.T) {
 
 	useCase := NewCreateUserUseCase(mockRepo, mockRoleRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "password123"
 	createError := errors.New("failed to create user")
 	defaultRole := role.NewUserRole()
 
 	mockRepo.On("FindByEmail", email).Return(nil, gorm.ErrRecordNotFound)
-	mockRoleRepo.On("IsRBACEnabled").Return(true)
-	mockRoleRepo.On("FindOrCreateDefault").Return(defaultRole, nil)
+	mockRoleRepo.On("IsRBACEnabled", ctx).Return(true)
+	mockRoleRepo.On("FindOrCreateDefault", ctx).Return(defaultRole, nil)
 	mockRepo.On("Create", mock.AnythingOfType("*user.User")).Return(createError)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.Error(t, err)
@@ -163,19 +169,20 @@ func TestCreateUserUseCase_Execute_TokenGenerationError_WithRBAC(t *testing.T) {
 
 	useCase := NewCreateUserUseCase(mockRepo, mockRoleRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "password123"
 	tokenError := errors.New("token generation failed")
 	defaultRole := role.NewUserRole()
 
 	mockRepo.On("FindByEmail", email).Return(nil, gorm.ErrRecordNotFound)
-	mockRoleRepo.On("IsRBACEnabled").Return(true)
-	mockRoleRepo.On("FindOrCreateDefault").Return(defaultRole, nil)
+	mockRoleRepo.On("IsRBACEnabled", ctx).Return(true)
+	mockRoleRepo.On("FindOrCreateDefault", ctx).Return(defaultRole, nil)
 	mockRepo.On("Create", mock.AnythingOfType("*user.User")).Return(nil)
 	mockTokenGen.On("GenerateToken", mock.AnythingOfType("*user.User")).Return("", tokenError)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.Error(t, err)

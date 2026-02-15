@@ -12,16 +12,16 @@ type MockRoleRepository struct {
 	mock.Mock
 }
 
-func (m *MockRoleRepository) FindByID(id uuid.UUID) (*role.Role, error) {
-	args := m.Called(id)
+func (m *MockRoleRepository) FindByID(ctx context.Context, id uuid.UUID) (*role.Role, error) {
+	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*role.Role), args.Error(1)
 }
 
-func (m *MockRoleRepository) FindByName(name string) (*role.Role, error) {
-	args := m.Called(name)
+func (m *MockRoleRepository) FindByName(ctx context.Context, name string) (*role.Role, error) {
+	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -33,15 +33,15 @@ func (m *MockRoleRepository) Create(ctx context.Context, r *role.Role) error {
 	return args.Error(0)
 }
 
-func (m *MockRoleRepository) FindOrCreateDefault() (*role.Role, error) {
-	args := m.Called()
+func (m *MockRoleRepository) FindOrCreateDefault(ctx context.Context) (*role.Role, error) {
+	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*role.Role), args.Error(1)
 }
 
-func (m *MockRoleRepository) IsRBACEnabled() bool {
-	args := m.Called()
+func (m *MockRoleRepository) IsRBACEnabled(ctx context.Context) bool {
+	args := m.Called(ctx)
 	return args.Bool(0)
 }

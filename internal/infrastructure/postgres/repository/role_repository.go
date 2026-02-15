@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/role"
 	"github.com/google/uuid"
@@ -24,9 +25,9 @@ func (r *RoleRepository) Create(ctx context.Context, ro *role.Role) error {
 }
 
 // FindByID finds a role by its ID with permissions preloaded
-func (r *RoleRepository) FindByID(id uuid.UUID) (*role.Role, error) {
+func (r *RoleRepository) FindByID(ctx context.Context, id uuid.UUID) (*role.Role, error) {
 	var ro role.Role
-	result := r.db.Preload("Permissions").Where("id = ?", id).First(&ro)
+	result := r.db.WithContext(ctx).Preload("Permissions").Where("id = ?", id).First(&ro)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -34,23 +35,19 @@ func (r *RoleRepository) FindByID(id uuid.UUID) (*role.Role, error) {
 }
 
 // FindByName finds a role by its name with permissions preloaded
-func (r *RoleRepository) FindByName(name string) (*role.Role, error) {
-	var ro role.Role
-	result := r.db.Preload("Permissions").Where("name = ?", name).First(&ro)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &ro, nil
+func (r *RoleRepository) FindByName(ctx context.Context, name string) (*role.Role, error) {
+	ro, err := gorm.G[role.Role](r.db.WithContext(ctx)).Preload("Permissions", nil).Where("name = ?", name).First(ctx)
+	return &ro, err
 }
 
 // FindOrCreateDefault returns the default user role if RBAC is enabled
-func (r *RoleRepository) FindOrCreateDefault() (*role.Role, error) {
-	existingRole, err := r.FindByName(role.RoleUser)
+func (r *RoleRepository) FindOrCreateDefault(ctx context.Context) (*role.Role, error) {
+	existingRole, err := r.FindByName(ctx, role.RoleUser)
 	if err == nil {
 		return existingRole, nil
 	}
 
-	if err != gorm.ErrRecordNotFound {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
@@ -59,15 +56,14 @@ func (r *RoleRepository) FindOrCreateDefault() (*role.Role, error) {
 }
 
 // IsRBACEnabled checks if any roles exist in the database
-func (r *RoleRepository) IsRBACEnabled() bool {
+func (r *RoleRepository) IsRBACEnabled(ctx context.Context) bool {
 	var count int64
-	r.db.Model(&role.Role{}).Count(&count)
+	r.db.WithContext(ctx).Model(&role.Role{}).Count(&count)
 	return count > 0
 }
 
 // SeedRoles creates default roles if they don't exist
-func (r *RoleRepository) SeedRoles() error {
-	ctx := context.Background()
+func (r *RoleRepository) SeedRoles(ctx context.Context) error {
 	roles := []*role.Role{
 		role.NewAdminRole(),
 		role.NewUserRole(),
@@ -76,12 +72,7 @@ func (r *RoleRepository) SeedRoles() error {
 
 	for _, ro := range roles {
 		var existing role.Role
-		result := r.db.Where("name = ?", ro.Name).First(&existing)
-		if result.Error == gorm.ErrRecordNotFound {
-			if err := r.Create(ctx, ro); err != nil {
-				return err
-			}
-		}
+		r.db.WithContext(ctx).Where("name = ?", ro.Name).FirstOrCreate(&existing)
 	}
 
 	return nil

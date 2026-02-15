@@ -46,8 +46,8 @@ func (u *LoginWithGoogleUseCase) Execute(ctx context.Context, idToken string) (s
 		newUser := user.New(googleUser.Email, nil)
 
 		// Only assign role if RBAC is enabled
-		if u.roleRepository.IsRBACEnabled() {
-			defaultRole, err := u.roleRepository.FindOrCreateDefault()
+		if u.roleRepository.IsRBACEnabled(ctx) {
+			defaultRole, err := u.roleRepository.FindOrCreateDefault(ctx)
 			if err != nil {
 				return "", fmt.Errorf("failed to find default role: %w", err)
 			}

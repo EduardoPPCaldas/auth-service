@@ -20,7 +20,7 @@ type AuthHandler struct {
 }
 
 type CreateUserUseCase interface {
-	Execute(email, password string) (string, error)
+	Execute(ctx context.Context, email, password string) (string, error)
 }
 
 type LoginUserUseCase interface {
@@ -74,7 +74,7 @@ func (h *AuthHandler) CreateUser(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	token, err := h.createUserUseCase.Execute(req.Email, req.Password)
+	token, err := h.createUserUseCase.Execute(c.Request().Context(), req.Email, req.Password)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}

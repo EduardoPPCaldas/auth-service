@@ -63,7 +63,7 @@ func setupIntegrationServer(t *testing.T) (*echo.Echo, func()) {
 	roleRepo := postgresRepo.NewRoleRepository(db)
 
 	// Seed roles
-	err = roleRepo.SeedRoles()
+	err = roleRepo.SeedRoles(ctx)
 	require.NoError(t, err)
 
 	// Initialize services

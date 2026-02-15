@@ -21,8 +21,8 @@ type MockCreateUserUseCase struct {
 	mock.Mock
 }
 
-func (m *MockCreateUserUseCase) Execute(email, password string) (string, error) {
-	args := m.Called(email, password)
+func (m *MockCreateUserUseCase) Execute(ctx context.Context, email, password string) (string, error) {
+	args := m.Called(ctx, email, password)
 	return args.String(0), args.Error(1)
 }
 
@@ -89,7 +89,7 @@ func TestAuthHandler_CreateUser_Success(t *testing.T) {
 	}
 	token := "jwt-token-here"
 
-	mockCreateUser.On("Execute", req.Email, req.Password).Return(token, nil)
+	mockCreateUser.On("Execute", mock.Anything, req.Email, req.Password).Return(token, nil)
 
 	body, _ := json.Marshal(req)
 	e := setupEcho()
@@ -171,7 +171,7 @@ func TestAuthHandler_CreateUser_UseCaseError(t *testing.T) {
 		Password: "password123",
 	}
 
-	mockCreateUser.On("Execute", req.Email, req.Password).Return("", assert.AnError)
+	mockCreateUser.On("Execute", mock.Anything, req.Email, req.Password).Return("", assert.AnError)
 
 	body, _ := json.Marshal(req)
 	e := setupEcho()
