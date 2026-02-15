@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/EduardoPPCaldas/auth-service/internal/domain/role"
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,12 @@ func setupIntegrationDB(t *testing.T) (*gorm.DB, func()) {
 	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	require.NoError(t, err)
 
-	err = db.AutoMigrate(&user.User{})
+	err = db.AutoMigrate(&role.Role{}, &role.Permission{}, &user.User{})
+	require.NoError(t, err)
+
+	// Seed default roles
+	roleRepo := NewRoleRepository(db)
+	err = roleRepo.SeedRoles()
 	require.NoError(t, err)
 
 	cleanup := func() {
@@ -55,19 +61,26 @@ func TestUserRepository_Integration_Create(t *testing.T) {
 	defer cleanup()
 
 	repo := NewUserRepository(db)
+	roleRepo := NewRoleRepository(db)
+
+	defaultRole, err := roleRepo.FindByName(role.RoleUser)
+	require.NoError(t, err)
+
 	testUser := user.New("integration@example.com", nil)
+	testUser.RoleID = &defaultRole.ID
 
 	// Act
-	err := repo.Create(testUser)
+	err = repo.Create(testUser)
 
 	// Assert
 	require.NoError(t, err)
 
 	var foundUser user.User
-	err = db.First(&foundUser, "id = ?", testUser.ID).Error
+	err = db.Preload("Role").Preload("Role.Permissions").First(&foundUser, "id = ?", testUser.ID).Error
 	require.NoError(t, err)
 	assert.Equal(t, testUser.Email, foundUser.Email)
 	assert.Equal(t, testUser.ID, foundUser.ID)
+	assert.Equal(t, defaultRole.ID, *foundUser.RoleID)
 }
 
 func TestUserRepository_Integration_FindByEmail(t *testing.T) {
@@ -76,9 +89,15 @@ func TestUserRepository_Integration_FindByEmail(t *testing.T) {
 	defer cleanup()
 
 	repo := NewUserRepository(db)
-	testUser := user.New("findtest@example.com", nil)
+	roleRepo := NewRoleRepository(db)
 
-	err := db.Create(testUser).Error
+	defaultRole, err := roleRepo.FindByName(role.RoleUser)
+	require.NoError(t, err)
+
+	testUser := user.New("findtest@example.com", nil)
+	testUser.RoleID = &defaultRole.ID
+
+	err = db.Create(testUser).Error
 	require.NoError(t, err)
 
 	// Act
@@ -89,6 +108,7 @@ func TestUserRepository_Integration_FindByEmail(t *testing.T) {
 	assert.NotNil(t, foundUser)
 	assert.Equal(t, testUser.Email, foundUser.Email)
 	assert.Equal(t, testUser.ID, foundUser.ID)
+	assert.Equal(t, defaultRole.ID, *foundUser.RoleID)
 }
 
 func TestUserRepository_Integration_CreateAndFind(t *testing.T) {
@@ -97,10 +117,16 @@ func TestUserRepository_Integration_CreateAndFind(t *testing.T) {
 	defer cleanup()
 
 	repo := NewUserRepository(db)
+	roleRepo := NewRoleRepository(db)
+
+	defaultRole, err := roleRepo.FindByName(role.RoleUser)
+	require.NoError(t, err)
+
 	testUser := user.New("createfind@example.com", nil)
+	testUser.RoleID = &defaultRole.ID
 
 	// Act - Create
-	err := repo.Create(testUser)
+	err = repo.Create(testUser)
 	require.NoError(t, err)
 
 	// Act - Find
@@ -111,6 +137,7 @@ func TestUserRepository_Integration_CreateAndFind(t *testing.T) {
 	assert.NotNil(t, foundUser)
 	assert.Equal(t, testUser.Email, foundUser.Email)
 	assert.Equal(t, testUser.ID, foundUser.ID)
+	assert.Equal(t, defaultRole.ID, *foundUser.RoleID)
 }
 
 func TestUserRepository_Integration_DuplicateEmail(t *testing.T) {
@@ -119,8 +146,15 @@ func TestUserRepository_Integration_DuplicateEmail(t *testing.T) {
 	defer cleanup()
 
 	repo := NewUserRepository(db)
+	roleRepo := NewRoleRepository(db)
+
+	defaultRole, err := roleRepo.FindByName(role.RoleUser)
+	require.NoError(t, err)
+
 	testUser1 := user.New("duplicate@example.com", nil)
+	testUser1.RoleID = &defaultRole.ID
 	testUser2 := user.New("duplicate@example.com", nil)
+	testUser2.RoleID = &defaultRole.ID
 
 	// Act
 	err1 := repo.Create(testUser1)

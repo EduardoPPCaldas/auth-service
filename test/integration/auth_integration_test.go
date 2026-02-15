@@ -13,6 +13,7 @@ import (
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/dto"
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/services/token"
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/usecases"
+	"github.com/EduardoPPCaldas/auth-service/internal/domain/role"
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
 	"github.com/EduardoPPCaldas/auth-service/internal/infrastructure/oauth/google"
 	postgresRepo "github.com/EduardoPPCaldas/auth-service/internal/infrastructure/postgres/repository"
@@ -51,7 +52,7 @@ func setupIntegrationServer(t *testing.T) (*echo.Echo, func()) {
 	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	require.NoError(t, err)
 
-	err = db.AutoMigrate(&user.User{})
+	err = db.AutoMigrate(&user.User{}, &role.Role{}, &role.Permission{})
 	require.NoError(t, err)
 
 	// Set JWT secret
@@ -59,6 +60,11 @@ func setupIntegrationServer(t *testing.T) (*echo.Echo, func()) {
 
 	// Initialize repositories
 	userRepo := postgresRepo.NewUserRepository(db)
+	roleRepo := postgresRepo.NewRoleRepository(db)
+
+	// Seed roles
+	err = roleRepo.SeedRoles()
+	require.NoError(t, err)
 
 	// Initialize services
 	tokenGenerator := token.NewTokenGenerator()
@@ -66,9 +72,9 @@ func setupIntegrationServer(t *testing.T) (*echo.Echo, func()) {
 	googleOAuthService := google.NewGoogleOAuthChallengeService("", "", "")
 
 	// Initialize use cases
-	createUserUseCase := usecases.NewCreateUserUseCase(userRepo, tokenGenerator)
+	createUserUseCase := usecases.NewCreateUserUseCase(userRepo, roleRepo, tokenGenerator)
 	loginUserUseCase := usecases.NewLoginUserUseCase(userRepo, tokenGenerator)
-	loginWithGoogleUseCase := usecases.NewLoginWithGoogleUseCase(userRepo, tokenGenerator, googleValidator)
+	loginWithGoogleUseCase := usecases.NewLoginWithGoogleUseCase(userRepo, roleRepo, tokenGenerator, googleValidator)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(

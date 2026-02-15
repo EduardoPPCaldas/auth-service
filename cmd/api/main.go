@@ -8,6 +8,7 @@ import (
 
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/services/token"
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/usecases"
+	"github.com/EduardoPPCaldas/auth-service/internal/domain/role"
 	tokenDomain "github.com/EduardoPPCaldas/auth-service/internal/domain/token"
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
 	"github.com/EduardoPPCaldas/auth-service/internal/infrastructure/oauth/google"
@@ -35,7 +36,14 @@ func main() {
 
 	// Initialize repositories
 	userRepo := postgresRepo.NewUserRepository(db)
+	roleRepo := postgresRepo.NewRoleRepository(db)
 	refreshTokenRepo := postgresRepo.NewRefreshTokenRepository(db)
+
+	// Seed default roles
+	if err := roleRepo.SeedRoles(); err != nil {
+		log.Fatalf("Failed to seed roles: %v", err)
+	}
+	log.Println("Roles seeded successfully")
 
 	// Initialize services
 	tokenGenerator := token.NewTokenGenerator()
@@ -50,9 +58,9 @@ func main() {
 	refreshTokenService := token.NewRefreshTokenService(refreshTokenRepo, userRepo, refreshExpiry)
 
 	// Initialize use cases
-	createUserUseCase := usecases.NewCreateUserUseCase(userRepo, tokenGenerator)
+	createUserUseCase := usecases.NewCreateUserUseCase(userRepo, roleRepo, tokenGenerator)
 	loginUserUseCase := usecases.NewLoginUserUseCase(userRepo, tokenGenerator)
-	loginWithGoogleUseCase := usecases.NewLoginWithGoogleUseCase(userRepo, tokenGenerator, googleValidator)
+	loginWithGoogleUseCase := usecases.NewLoginWithGoogleUseCase(userRepo, roleRepo, tokenGenerator, googleValidator)
 	refreshTokenUseCase := usecases.NewRefreshTokenUseCase(userRepo, tokenGenerator, refreshTokenService, accessExpiry)
 	logoutUseCase := usecases.NewLogoutUseCase(userRepo, refreshTokenService)
 
@@ -100,7 +108,7 @@ func initDatabase() (*gorm.DB, error) {
 	}
 
 	// Auto-migrate entities
-	if err := db.AutoMigrate(&user.User{}, &tokenDomain.RefreshToken{}); err != nil {
+	if err := db.AutoMigrate(&user.User{}, &tokenDomain.RefreshToken{}, &role.Role{}, &role.Permission{}); err != nil {
 		return nil, fmt.Errorf("failed to auto-migrate: %w", err)
 	}
 

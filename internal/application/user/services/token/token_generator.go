@@ -28,10 +28,18 @@ func (t *tokenGenerator) GenerateToken(user *user.User) (string, error) {
 		return "", fmt.Errorf("JWT_SECRET environment variable is not set")
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	claims := jwt.MapClaims{
 		"sub": user.ID.String(),
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
-	})
+	}
+
+	// Only add role and permissions if user has a role (RBAC is enabled)
+	if user.Role != nil {
+		claims["role"] = user.Role.Name
+		claims["permissions"] = user.Role.GetPermissionStrings()
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenString, err := token.SignedString([]byte(secret))
 
