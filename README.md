@@ -4,7 +4,7 @@ A centralized authentication service built with Go that provides secure user aut
 
 ## Features
 
-### Current Features
+### Implemented Features
 
 - ✅ User registration with email and password
 - ✅ User login with JWT token generation
@@ -12,15 +12,14 @@ A centralized authentication service built with Go that provides secure user aut
 - ✅ Token-based authentication using JWT
 - ✅ PostgreSQL database integration
 - ✅ Clean Architecture implementation
-
-### Planned Features
-
-- 🚧 HTTP REST API endpoints
-- 🚧 gRPC service implementation
-- 🚧 Token refresh mechanism
-- 🚧 Password reset functionality
-- 🚧 User profile management
-- 🚧 Role-based access control (RBAC)
+- ✅ HTTP REST API (Echo framework)
+- ✅ gRPC service implementation
+- ✅ Token refresh mechanism
+- ✅ Google OAuth login
+- ✅ Role-based access control (RBAC)
+- ✅ User logout (single device and all devices)
+- ✅ Swagger/OpenAPI documentation
+- ✅ JWT middleware for protected routes
 
 ## Architecture
 
@@ -30,13 +29,25 @@ This project follows **Clean Architecture** principles, organizing code into thr
 auth-service/
 ├── cmd/api/              # Application entry point
 ├── internal/
-│   ├── domain/          # Business entities and interfaces
-│   │   └── user/
-│   ├── application/     # Use cases and business logic
-│   │   └── user/usecases/
-│   └── infrastructure/  # External dependencies (database, APIs)
-│       └── postgres/
-└── README.md
+│   ├── config/           # Configuration management
+│   ├── domain/           # Business entities and interfaces
+│   │   ├── user/
+│   │   └── role/
+│   ├── application/      # Use cases and business logic
+│   │   ├── user/
+│   │   │   ├── usecases/
+│   │   │   ├── dto/
+│   │   │   └── services/
+│   │   └── role/
+│   │       ├── usecases/
+│   │       └── dto/
+│   └── infrastructure/   # External dependencies
+│       ├── postgres/
+│       ├── oauth/google/
+│       └── redis/
+├── pkg/auth/             # Reusable authentication middleware
+├── api/proto/            # Protocol buffer definitions
+└── test/                 # Integration tests
 ```
 
 ### Layers
@@ -53,6 +64,9 @@ auth-service/
 - **Password Hashing**: bcrypt (golang.org/x/crypto/bcrypt)
 - **ORM**: GORM (gorm.io/gorm)
 - **UUID**: google/uuid
+- **HTTP Framework**: Echo (github.com/labstack/echo/v5)
+- **Protocol Buffers**: gRPC (google.golang.org/grpc)
+- **OAuth**: Google OAuth 2.0
 
 ## Prerequisites
 
@@ -97,18 +111,19 @@ export JWT_SECRET="your-secret-key-here"
 
 The service requires the following environment variables:
 
-| Variable       | Description                      | Required | Default |
-| -------------- | -------------------------------- | -------- | ------- |
-| `DATABASE_URL` | PostgreSQL connection string     | Yes      | -       |
-| `JWT_SECRET`   | Secret key for JWT token signing | Yes      | -       |
-| `PORT`         | HTTP server port                 | No       | `8080`  |
-| `GRPC_PORT`    | gRPC server port                 | No       | `50051` |
+| Variable           | Description                      | Required | Default |
+| ------------------ | -------------------------------- | -------- | ------- |
+| `DATABASE_URL`     | PostgreSQL connection string     | Yes      | -       |
+| `JWT_SECRET`       | Secret key for JWT token signing | Yes      | -       |
+| `PORT`             | HTTP server port                 | No       | `8080`  |
+| `GRPC_PORT`        | gRPC server port                 | No       | `50051` |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID           | No       | -       |
 
 ## Usage
 
-### HTTP API (Coming Soon)
+### HTTP REST API
 
-The HTTP API will provide REST endpoints for authentication operations:
+The HTTP API provides REST endpoints for authentication operations:
 
 ```bash
 # Register a new user
@@ -129,37 +144,151 @@ Content-Type: application/json
   "password": "securepassword123"
 }
 
-# Response
+# Login with Google
+POST /api/v1/auth/login/google
+Content-Type: application/json
+
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "idToken": "google-id-token"
+}
+
+# Refresh token
+POST /api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "your-refresh-token"
+}
+
+# Logout (single device)
+POST /api/v1/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "your-refresh-token"
+}
+
+# Logout (all devices)
+POST /api/v1/auth/logout-all
+Authorization: Bearer <access-token>
+
+# Get Google OAuth URL
+GET /api/v1/auth/google/challenge
+```
+
+### Role Management (RBAC)
+
+```bash
+# Create a role
+POST /api/v1/roles
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{
+  "name": "admin",
+  "permissions": ["read", "write", "delete"]
+}
+
+# Get role
+GET /api/v1/roles/:id
+Authorization: Bearer <access-token>
+
+# List roles
+GET /api/v1/roles
+Authorization: Bearer <access-token>
+
+# Update role
+PUT /api/v1/roles/:id
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{
+  "name": "moderator",
+  "permissions": ["read", "write"]
+}
+
+# Delete role
+DELETE /api/v1/roles/:id
+Authorization: Bearer <access-token>
+
+# Assign role to user
+POST /api/v1/roles/assign
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{
+  "userId": "user-uuid",
+  "roleId": "role-uuid"
 }
 ```
 
-### gRPC API (Coming Soon)
+### gRPC API
 
-The gRPC service will provide the same functionality through gRPC:
+The gRPC service provides the same functionality through gRPC:
 
 ```protobuf
 service AuthService {
   rpc Register(RegisterRequest) returns (RegisterResponse);
   rpc Login(LoginRequest) returns (LoginResponse);
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+}
+
+service RoleService {
+  rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse);
+  rpc GetRole(GetRoleRequest) returns (GetRoleResponse);
+  rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
+  rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
+  rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse);
+  rpc AssignRoleToUser(AssignRoleToUserRequest) returns (AssignRoleToUserResponse);
 }
 ```
 
 ## Use Cases
+
+### User Use Cases
 
 ### CreateUserUseCase
 
 - Validates that the email is not already registered
 - Hashes the password using bcrypt
 - Creates a new user in the database
+- Returns an access token
 
 ### LoginUserUseCase
 
 - Validates user credentials (email and password)
 - Generates a JWT token with user ID and expiration (24 hours)
-- Returns the token for use in subsequent requests
+- Returns the access token
+
+### LoginWithGoogleUseCase
+
+- Validates Google ID token
+- Creates or retrieves user from database
+- Returns an access token
+
+### RefreshTokenUseCase
+
+- Validates the refresh token
+- Generates new access and refresh tokens
+- Revokes the old refresh token
+
+### LogoutUseCase
+
+- Revokes refresh tokens (single or all)
+- Supports logout from single device or all devices
+
+### Role Use Cases
+
+### CreateRoleUseCase
+
+- Creates a new role with specified permissions
+
+### AssignRoleToUserUseCase
+
+- Assigns a role to a user
+- Validates that both user and role exist
 
 ## Security
 
@@ -179,14 +308,35 @@ go run cmd/api/main.go
 ### Running Tests
 
 ```bash
-go test ./...
+# Run all unit tests
+go test -v ./... -tags=!integration
+
+# Run integration tests (requires Docker)
+go test -v ./... -tags=integration
+
+# Run tests with coverage
+go test -v -coverprofile=coverage.out ./... -tags=!integration
+go tool cover -html=coverage.out -o coverage.html
+```
+
+### Swagger Documentation
+
+When the service is running, access the Swagger UI at:
+
+```
+http://localhost:8080/swagger/index.html
 ```
 
 ### Project Structure
 
 - `internal/domain/user/`: User entity and repository interface
+- `internal/domain/role/`: Role entity and repository interface
 - `internal/application/user/usecases/`: Business logic for user operations
+- `internal/application/role/usecases/`: Business logic for role operations
 - `internal/infrastructure/postgres/repository/`: PostgreSQL implementation
+- `internal/presentation/http/handlers/`: HTTP handlers
+- `internal/presentation/http/middleware/`: HTTP middleware
+- `pkg/auth/`: Reusable authentication middleware
 - `cmd/api/main.go`: Application entry point
 
 ## Contributing
@@ -199,14 +349,16 @@ This is a personal project, but suggestions and improvements are welcome!
 
 ## Roadmap
 
-- [ ] Implement HTTP REST API with Gin or Echo framework
-- [ ] Implement gRPC service with protocol buffers
-- [ ] Add token refresh mechanism
+- [x] Implement HTTP REST API with Echo framework
+- [x] Implement gRPC service with protocol buffers
+- [x] Add token refresh mechanism
+- [x] Add Google OAuth login
+- [x] Add role management endpoints
+- [x] Implement RBAC (Role-Based Access Control)
+- [x] Add comprehensive test coverage
+- [x] Add Docker support
+- [x] Add Swagger/OpenAPI documentation
 - [ ] Add password reset functionality
 - [ ] Add user profile endpoints
-- [ ] Implement RBAC (Role-Based Access Control)
-- [ ] Add comprehensive test coverage
-- [ ] Add Docker support
-- [ ] Add CI/CD pipeline
-- [ ] Add API documentation (OpenAPI/Swagger)
 - [ ] Add rate limiting and security middleware
+- [ ] Add CI/CD pipeline
