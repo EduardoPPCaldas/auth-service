@@ -15,9 +15,9 @@ type Config struct {
 	Port string
 
 	// JWT
-	JWTSecret     string
-	AccessExpiry  time.Duration
-	RefreshExpiry time.Duration
+	JWTSecret        string
+	JWTAccessExpiry  time.Duration
+	JWTRefreshExpiry time.Duration
 
 	// Google OAuth
 	GoogleClientID     string
@@ -79,8 +79,8 @@ func loadConfig() *Config {
 		Port:               port,
 		JWTSecret:          jwtSecret,
 		JWTRefreshSecret:   jwtRefreshSecret,
-		AccessExpiry:       accessExpiry,
-		RefreshExpiry:      refreshExpiry,
+		JWTAccessExpiry:    accessExpiry,
+		JWTRefreshExpiry:   refreshExpiry,
 		GoogleClientID:     googleClientID,
 		GoogleClientSecret: googleClientSecret,
 		GoogleRedirectURI:  googleRedirectURI,

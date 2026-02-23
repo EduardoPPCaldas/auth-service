@@ -19,27 +19,24 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 }
 
 // Create creates a new user using GORM generics
-func (r *UserRepository) Create(u *user.User) error {
-	ctx := context.Background()
+func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
 	return gorm.G[user.User](r.db).Create(ctx, u)
 }
 
 // FindByEmail finds a user by their email address
-func (r *UserRepository) FindByEmail(email string) (*user.User, error) {
-	var u user.User
-	result := r.db.Preload("Role").Preload("Role.Permissions").Where("email = ?", email).First(&u)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &u, nil
+func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.User, error) {
+	user, err := gorm.G[user.User](r.db).Preload("Role.Permissions", nil).Where("email = ?", email).First(ctx)
+	return &user, err
 }
 
 // FindByID finds a user by their ID with role preloaded
-func (r *UserRepository) FindByID(id uuid.UUID) (*user.User, error) {
-	var u user.User
-	result := r.db.Preload("Role").Preload("Role.Permissions").Where("id = ?", id).First(&u)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &u, nil
+func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	user, err := gorm.G[user.User](r.db).Preload("Role", nil).Preload("Role.Permissions", nil).Where("id = ?", id).First(ctx)
+	return &user, err
+}
+
+// UpdateRole updates a user's role assignment
+func (r *UserRepository) UpdateRole(ctx context.Context, userID uuid.UUID, roleID *uuid.UUID) error {
+	_, err := gorm.G[user.User](r.db).Where("id = ?", userID).Update(ctx, "role_id", roleID)
+	return err
 }

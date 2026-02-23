@@ -24,7 +24,7 @@ type CreateUserUseCase interface {
 }
 
 type LoginUserUseCase interface {
-	Execute(email, password string) (string, error)
+	Execute(ctx context.Context, email, password string) (string, error)
 }
 
 type LoginWithGoogleUseCase interface {
@@ -94,7 +94,7 @@ func (h *AuthHandler) LoginUser(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	token, err := h.loginUserUseCase.Execute(req.Email, req.Password)
+	token, err := h.loginUserUseCase.Execute(c.Request().Context(), req.Email, req.Password)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": err.Error()})
 	}

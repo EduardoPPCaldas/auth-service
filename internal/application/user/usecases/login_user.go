@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/services/token"
@@ -20,8 +21,8 @@ func NewLoginUserUseCase(userRepository user.UserRepository, tokenGenerator toke
 	}
 }
 
-func (u *LoginUserUseCase) Execute(email, password string) (string, error) {
-	user, err := u.userRepository.FindByEmail(email)
+func (u *LoginUserUseCase) Execute(ctx context.Context, email, password string) (string, error) {
+	user, err := u.userRepository.FindByEmail(ctx, email)
 	if err != nil {
 		return "", fmt.Errorf("error finding user: %w", err)
 	}

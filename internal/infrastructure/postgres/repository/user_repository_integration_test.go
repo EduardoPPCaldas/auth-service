@@ -41,11 +41,6 @@ func setupIntegrationDB(t *testing.T) (*gorm.DB, func()) {
 	err = db.AutoMigrate(&role.Role{}, &role.Permission{}, &user.User{})
 	require.NoError(t, err)
 
-	// Seed default roles
-	roleRepo := NewRoleRepository(db)
-	err = roleRepo.SeedRoles(ctx)
-	require.NoError(t, err)
-
 	cleanup := func() {
 		if err := postgresContainer.Terminate(ctx); err != nil {
 			t.Logf("Failed to terminate container: %v", err)
@@ -64,6 +59,10 @@ func TestUserRepository_Integration_Create(t *testing.T) {
 	repo := NewUserRepository(db)
 	roleRepo := NewRoleRepository(db)
 
+	roleRepo.Create(ctx, &role.Role{
+		Name: role.RoleUser,
+	})
+
 	defaultRole, err := roleRepo.FindByName(ctx, role.RoleUser)
 	require.NoError(t, err)
 
@@ -71,7 +70,7 @@ func TestUserRepository_Integration_Create(t *testing.T) {
 	testUser.RoleID = &defaultRole.ID
 
 	// Act
-	err = repo.Create(testUser)
+	err = repo.Create(ctx, testUser)
 
 	// Assert
 	require.NoError(t, err)
@@ -93,6 +92,10 @@ func TestUserRepository_Integration_FindByEmail(t *testing.T) {
 	repo := NewUserRepository(db)
 	roleRepo := NewRoleRepository(db)
 
+	roleRepo.Create(ctx, &role.Role{
+		Name: role.RoleUser,
+	})
+
 	defaultRole, err := roleRepo.FindByName(ctx, role.RoleUser)
 	require.NoError(t, err)
 
@@ -103,7 +106,7 @@ func TestUserRepository_Integration_FindByEmail(t *testing.T) {
 	require.NoError(t, err)
 
 	// Act
-	foundUser, err := repo.FindByEmail("findtest@example.com")
+	foundUser, err := repo.FindByEmail(ctx, "findtest@example.com")
 
 	// Assert
 	require.NoError(t, err)
@@ -122,6 +125,10 @@ func TestUserRepository_Integration_CreateAndFind(t *testing.T) {
 	repo := NewUserRepository(db)
 	roleRepo := NewRoleRepository(db)
 
+	roleRepo.Create(ctx, &role.Role{
+		Name: role.RoleUser,
+	})
+
 	defaultRole, err := roleRepo.FindByName(ctx, role.RoleUser)
 	require.NoError(t, err)
 
@@ -129,11 +136,11 @@ func TestUserRepository_Integration_CreateAndFind(t *testing.T) {
 	testUser.RoleID = &defaultRole.ID
 
 	// Act - Create
-	err = repo.Create(testUser)
+	err = repo.Create(ctx, testUser)
 	require.NoError(t, err)
 
 	// Act - Find
-	foundUser, err := repo.FindByEmail("createfind@example.com")
+	foundUser, err := repo.FindByEmail(ctx, "createfind@example.com")
 
 	// Assert
 	require.NoError(t, err)
@@ -152,6 +159,10 @@ func TestUserRepository_Integration_DuplicateEmail(t *testing.T) {
 	repo := NewUserRepository(db)
 	roleRepo := NewRoleRepository(db)
 
+	roleRepo.Create(ctx, &role.Role{
+		Name: role.RoleUser,
+	})
+
 	defaultRole, err := roleRepo.FindByName(ctx, role.RoleUser)
 	require.NoError(t, err)
 
@@ -161,8 +172,8 @@ func TestUserRepository_Integration_DuplicateEmail(t *testing.T) {
 	testUser2.RoleID = &defaultRole.ID
 
 	// Act
-	err1 := repo.Create(testUser1)
-	err2 := repo.Create(testUser2)
+	err1 := repo.Create(ctx, testUser1)
+	err2 := repo.Create(ctx, testUser2)
 
 	// Assert
 	require.NoError(t, err1)

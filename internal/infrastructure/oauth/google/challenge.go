@@ -1,8 +1,6 @@
 package google
 
 import (
-	"os"
-
 	"golang.org/x/oauth2"
 	googleOAuth2 "golang.org/x/oauth2/google"
 )
@@ -12,19 +10,6 @@ type GoogleOAuthChallengeService struct {
 }
 
 func NewGoogleOAuthChallengeService(clientID, clientSecret, redirectURI string) *GoogleOAuthChallengeService {
-	if clientID == "" {
-		clientID = os.Getenv("GOOGLE_CLIENT_ID")
-	}
-	if clientSecret == "" {
-		clientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
-	}
-	if redirectURI == "" {
-		redirectURI = os.Getenv("GOOGLE_REDIRECT_URI")
-		if redirectURI == "" {
-			redirectURI = "http://localhost:8080/api/v1/auth/google/callback"
-		}
-	}
-
 	config := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,

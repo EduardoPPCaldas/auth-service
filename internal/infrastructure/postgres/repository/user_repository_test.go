@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"testing"
 
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
@@ -25,9 +26,10 @@ func TestUserRepository_Create(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewUserRepository(db)
 	testUser := user.New("test@example.com", nil)
+	ctx := context.Background()
 
 	// Act
-	err := repo.Create(testUser)
+	err := repo.Create(ctx, testUser)
 
 	// Assert
 	require.NoError(t, err)
@@ -44,12 +46,13 @@ func TestUserRepository_FindByEmail_Exists(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewUserRepository(db)
 	testUser := user.New("test@example.com", nil)
+	ctx := context.Background()
 
 	err := db.Create(testUser).Error
 	require.NoError(t, err)
 
 	// Act
-	foundUser, err := repo.FindByEmail("test@example.com")
+	foundUser, err := repo.FindByEmail(ctx, "test@example.com")
 
 	// Assert
 	require.NoError(t, err)
@@ -62,9 +65,10 @@ func TestUserRepository_FindByEmail_NotExists(t *testing.T) {
 	// Arrange
 	db := setupTestDB(t)
 	repo := NewUserRepository(db)
+	ctx := context.Background()
 
 	// Act
-	foundUser, err := repo.FindByEmail("nonexistent@example.com")
+	foundUser, err := repo.FindByEmail(ctx, "nonexistent@example.com")
 
 	// Assert
 	assert.Error(t, err)
@@ -77,13 +81,14 @@ func TestUserRepository_FindByEmail_CaseSensitive(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewUserRepository(db)
 	testUser := user.New("Test@Example.com", nil)
+	ctx := context.Background()
 
 	err := db.Create(testUser).Error
 	require.NoError(t, err)
 
 	// Act
-	foundUser1, err1 := repo.FindByEmail("Test@Example.com")
-	foundUser2, err2 := repo.FindByEmail("test@example.com")
+	foundUser1, err1 := repo.FindByEmail(ctx, "Test@Example.com")
+	foundUser2, err2 := repo.FindByEmail(ctx, "test@example.com")
 
 	// Assert
 	require.NoError(t, err1)

@@ -55,7 +55,7 @@ func (m *JWTMiddleware) ValidateToken(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token claims"})
 		}
 
-		user, err := m.userRepo.FindByID(userID)
+		user, err := m.userRepo.FindByID(c.Request().Context(), userID)
 		if err != nil {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
 		}

@@ -62,18 +62,47 @@ func (r *RoleRepository) IsRBACEnabled(ctx context.Context) bool {
 	return count > 0
 }
 
-// SeedRoles creates default roles if they don't exist
-func (r *RoleRepository) SeedRoles(ctx context.Context) error {
-	roles := []*role.Role{
-		role.NewAdminRole(),
-		role.NewUserRole(),
-		role.NewModeratorRole(),
-	}
+// Update updates an existing role
+func (r *RoleRepository) Update(ctx context.Context, ro *role.Role) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Update role basic info
+		if err := tx.Model(ro).Updates(map[string]any{
+			"name":       ro.Name,
+			"updated_at": ro.UpdatedAt,
+		}).Error; err != nil {
+			return err
+		}
+		// Delete old permissions and create new ones
+		if err := tx.Where("role_id = ?", ro.ID).Delete(&role.Permission{}).Error; err != nil {
+			return err
+		}
+		if len(ro.Permissions) > 0 {
+			if err := tx.Create(ro.Permissions).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
 
-	for _, ro := range roles {
-		var existing role.Role
-		r.db.WithContext(ctx).Where("name = ?", ro.Name).FirstOrCreate(&existing)
-	}
+// Delete deletes a role by ID
+func (r *RoleRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Delete permissions first
+		if err := tx.Where("role_id = ?", id).Delete(&role.Permission{}).Error; err != nil {
+			return err
+		}
+		// Delete role
+		return tx.Delete(&role.Role{}, "id = ?", id).Error
+	})
+}
 
-	return nil
+// List returns all roles with their permissions
+func (r *RoleRepository) List(ctx context.Context) ([]role.Role, error) {
+	var roles []role.Role
+	result := r.db.WithContext(ctx).Preload("Permissions").Find(&roles)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return roles, nil
 }

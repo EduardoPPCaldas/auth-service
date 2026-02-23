@@ -46,7 +46,7 @@ func (uc *refreshTokenUseCase) Execute(ctx context.Context, refreshTokenString s
 		return nil, fmt.Errorf("invalid refresh token: %w", err)
 	}
 
-	user, err := uc.userRepo.FindByID(refreshToken.UserID)
+	user, err := uc.userRepo.FindByID(ctx, refreshToken.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}

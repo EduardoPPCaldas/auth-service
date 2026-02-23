@@ -28,7 +28,7 @@ func NewCreateUserUseCase(userRepository user.UserRepository, roleRepository rol
 }
 
 func (u *CreateUserUseCase) Execute(ctx context.Context, email, password string) (string, error) {
-	existingUser, err := u.userRepository.FindByEmail(email)
+	existingUser, err := u.userRepository.FindByEmail(ctx, email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", fmt.Errorf("error creating user: %w", err)
 	}
@@ -56,7 +56,7 @@ func (u *CreateUserUseCase) Execute(ctx context.Context, email, password string)
 		}
 	}
 
-	err = u.userRepository.Create(newUser)
+	err = u.userRepository.Create(ctx, newUser)
 	if err != nil {
 		return "", fmt.Errorf("error creating user: %w", err)
 	}

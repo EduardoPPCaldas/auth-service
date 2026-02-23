@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration test-all run setup-db docker-build docker-run docker-dev docker-stop docker-clean
+.PHONY: test test-unit test-integration test-all run setup-db docker-build docker-run docker-dev docker-stop docker-clean generate-mocks
 
 # Run all tests (unit tests only, integration tests require docker)
 test:
@@ -78,7 +78,11 @@ docker-stop:
 
 # Clean Docker containers and volumes
 docker-clean:
-	@echo "Cleaning Docker containers and volumes..."
 	docker-compose down -v
 	docker-compose -f docker-compose.dev.yml down -v
 	docker rmi auth-service:latest 2>/dev/null || true
+
+# Generate mocks for interfaces (requires mockgen: go install go.uber.org/mock/mockgen@latest)
+generate-mocks:
+	mockgen -destination=internal/domain/user/mocks/repository.go -package=mocks github.com/EduardoPPCaldas/auth-service/internal/domain/user UserRepository
+	mockgen -destination=internal/domain/role/mocks/repository.go -package=mocks github.com/EduardoPPCaldas/auth-service/internal/domain/role Repository

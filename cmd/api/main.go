@@ -1,14 +1,13 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"os"
-	"time"
 
+	roleusecases "github.com/EduardoPPCaldas/auth-service/internal/application/role/usecases"
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/services/token"
 	"github.com/EduardoPPCaldas/auth-service/internal/application/user/usecases"
+	"github.com/EduardoPPCaldas/auth-service/internal/config"
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/role"
 	tokenDomain "github.com/EduardoPPCaldas/auth-service/internal/domain/token"
 	"github.com/EduardoPPCaldas/auth-service/internal/domain/user"
@@ -16,6 +15,7 @@ import (
 	postgresRepo "github.com/EduardoPPCaldas/auth-service/internal/infrastructure/postgres/repository"
 	"github.com/EduardoPPCaldas/auth-service/internal/presentation/http"
 	"github.com/EduardoPPCaldas/auth-service/internal/presentation/http/handlers"
+	"github.com/EduardoPPCaldas/auth-service/pkg/auth"
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -29,8 +29,11 @@ func main() {
 		// .env file is optional, so we just log a warning if it's not found
 		log.Println("Warning: .env file not found, using system environment variables")
 	}
+
+	cfg := config.Load()
+
 	// Initialize database
-	db, err := initDatabase()
+	db, err := initDatabase(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -40,30 +43,34 @@ func main() {
 	roleRepo := postgresRepo.NewRoleRepository(db)
 	refreshTokenRepo := postgresRepo.NewRefreshTokenRepository(db)
 
-	// Seed default roles
-	if err := roleRepo.SeedRoles(context.Background()); err != nil {
-		log.Fatalf("Failed to seed roles: %v", err)
-	}
-	log.Println("Roles seeded successfully")
-
 	// Initialize services
+	googleValidator := google.NewGoogleTokenValidator(cfg.GoogleClientID)
 	tokenGenerator := token.NewTokenGenerator()
-	googleValidator := google.NewGoogleTokenValidator(os.Getenv("GOOGLE_CLIENT_ID"))
-	googleOAuthService := google.NewGoogleOAuthChallengeService("", "", "")
-
-	// Parse time durations from environment
-	accessExpiry, _ := time.ParseDuration(getEnvOrDefault("JWT_ACCESS_EXPIRY", "24h"))
-	refreshExpiry, _ := time.ParseDuration(getEnvOrDefault("JWT_REFRESH_EXPIRY", "168h"))
+	googleOAuthService := google.NewGoogleOAuthChallengeService(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURI)
 
 	// Initialize additional services
-	refreshTokenService := token.NewRefreshTokenService(refreshTokenRepo, userRepo, refreshExpiry)
+	refreshTokenService := token.NewRefreshTokenService(refreshTokenRepo, userRepo, cfg.JWTRefreshExpiry)
+
+	// Initialize auth middleware
+	authMiddleware, err := auth.NewAuthMiddleware(auth.WithJWTSecret(cfg.JWTSecret))
+	if err != nil {
+		log.Fatalf("Failed to initialize auth middleware: %v", err)
+	}
 
 	// Initialize use cases
 	createUserUseCase := usecases.NewCreateUserUseCase(userRepo, roleRepo, tokenGenerator)
 	loginUserUseCase := usecases.NewLoginUserUseCase(userRepo, tokenGenerator)
 	loginWithGoogleUseCase := usecases.NewLoginWithGoogleUseCase(userRepo, roleRepo, tokenGenerator, googleValidator)
-	refreshTokenUseCase := usecases.NewRefreshTokenUseCase(userRepo, tokenGenerator, refreshTokenService, accessExpiry)
+	refreshTokenUseCase := usecases.NewRefreshTokenUseCase(userRepo, tokenGenerator, refreshTokenService, cfg.JWTAccessExpiry)
 	logoutUseCase := usecases.NewLogoutUseCase(userRepo, refreshTokenService)
+
+	// Initialize role management use cases
+	createRoleUseCase := roleusecases.NewCreateRoleUseCase(roleRepo, userRepo)
+	updateRoleUseCase := roleusecases.NewUpdateRoleUseCase(roleRepo, userRepo)
+	deleteRoleUseCase := roleusecases.NewDeleteRoleUseCase(roleRepo, userRepo)
+	listRolesUseCase := roleusecases.NewListRolesUseCase(roleRepo)
+	getRoleUseCase := roleusecases.NewGetRoleUseCase(roleRepo)
+	assignRoleToUserUseCase := roleusecases.NewAssignRoleToUserUseCase(roleRepo, userRepo)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(
@@ -75,6 +82,15 @@ func main() {
 		googleOAuthService,
 	)
 
+	roleHandler := handlers.NewRoleHandler(
+		createRoleUseCase,
+		updateRoleUseCase,
+		deleteRoleUseCase,
+		listRolesUseCase,
+		getRoleUseCase,
+		assignRoleToUserUseCase,
+	)
+
 	// Initialize Echo
 	e := echo.New()
 
@@ -83,22 +99,21 @@ func main() {
 	e.Validator = &CustomValidator{validator: validator.New()}
 
 	// Routes
-	http.SetupRoutes(e, authHandler)
+	http.SetupRoutes(
+		e,
+		authHandler,
+		roleHandler,
+		func() echo.MiddlewareFunc { return authMiddleware.EchoMiddleware() },
+		func() echo.MiddlewareFunc { return authMiddleware.EchoRequireRole(role.RoleAdmin) },
+	)
 
-	// Start server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("Server starting on port %s", port)
-	if err := e.Start(":" + port); err != nil {
+	log.Printf("Server starting on port %s", cfg.Port)
+	if err := e.Start(":" + cfg.Port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
 
-func initDatabase() (*gorm.DB, error) {
-	dbURL := os.Getenv("DATABASE_URL")
+func initDatabase(dbURL string) (*gorm.DB, error) {
 	if dbURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL environment variable is not set")
 	}
@@ -114,13 +129,6 @@ func initDatabase() (*gorm.DB, error) {
 	}
 
 	return db, nil
-}
-
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 // CustomValidator is a custom validator for Echo

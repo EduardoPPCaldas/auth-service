@@ -62,10 +62,6 @@ func setupIntegrationServer(t *testing.T) (*echo.Echo, func()) {
 	userRepo := postgresRepo.NewUserRepository(db)
 	roleRepo := postgresRepo.NewRoleRepository(db)
 
-	// Seed roles
-	err = roleRepo.SeedRoles(ctx)
-	require.NoError(t, err)
-
 	// Initialize services
 	tokenGenerator := token.NewTokenGenerator()
 	googleValidator := google.NewGoogleTokenValidator("")
@@ -90,7 +86,7 @@ func setupIntegrationServer(t *testing.T) (*echo.Echo, func()) {
 	e := echo.New()
 	httphandler.SetupMiddleware(e)
 	e.Validator = &CustomValidator{validator: validator.New()}
-	httphandler.SetupRoutes(e, authHandler)
+	httphandler.SetupRoutes(e, authHandler, nil, nil, nil)
 
 	cleanup := func() {
 		os.Unsetenv("JWT_SECRET")

@@ -41,7 +41,7 @@ func (u *LoginWithGoogleUseCase) Execute(ctx context.Context, idToken string) (s
 
 	var appUser *user.User
 
-	existingUser, err := u.userRepository.FindByEmail(googleUser.Email)
+	existingUser, err := u.userRepository.FindByEmail(ctx, googleUser.Email)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		newUser := user.New(googleUser.Email, nil)
 
@@ -57,7 +57,7 @@ func (u *LoginWithGoogleUseCase) Execute(ctx context.Context, idToken string) (s
 			}
 		}
 
-		if err := u.userRepository.Create(newUser); err != nil {
+		if err := u.userRepository.Create(ctx, newUser); err != nil {
 			return "", fmt.Errorf("failed to create user: %w", err)
 		}
 		appUser = newUser

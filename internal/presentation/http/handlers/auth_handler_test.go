@@ -30,8 +30,8 @@ type MockLoginUserUseCase struct {
 	mock.Mock
 }
 
-func (m *MockLoginUserUseCase) Execute(email, password string) (string, error) {
-	args := m.Called(email, password)
+func (m *MockLoginUserUseCase) Execute(ctx context.Context, email, password string) (string, error) {
+	args := m.Called(ctx, email, password)
 	return args.String(0), args.Error(1)
 }
 
@@ -211,7 +211,7 @@ func TestAuthHandler_LoginUser_Success(t *testing.T) {
 	}
 	token := "jwt-token-here"
 
-	mockLoginUser.On("Execute", req.Email, req.Password).Return(token, nil)
+	mockLoginUser.On("Execute", mock.Anything, req.Email, req.Password).Return(token, nil)
 
 	body, _ := json.Marshal(req)
 	e := setupEcho()
@@ -256,7 +256,7 @@ func TestAuthHandler_LoginUser_InvalidCredentials(t *testing.T) {
 		Password: "wrongpassword",
 	}
 
-	mockLoginUser.On("Execute", req.Email, req.Password).Return("", assert.AnError)
+	mockLoginUser.On("Execute", mock.Anything, req.Email, req.Password).Return("", assert.AnError)
 
 	body, _ := json.Marshal(req)
 	e := setupEcho()

@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -20,6 +21,7 @@ func TestLoginUserUseCase_Execute_Success(t *testing.T) {
 
 	useCase := NewLoginUserUseCase(mockRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "password123"
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -32,11 +34,11 @@ func TestLoginUserUseCase_Execute_Success(t *testing.T) {
 		Password: &hashedPasswordStr,
 	}
 
-	mockRepo.On("FindByEmail", email).Return(existingUser, nil)
+	mockRepo.On("FindByEmail", ctx, email).Return(existingUser, nil)
 	mockTokenGen.On("GenerateToken", existingUser).Return(expectedToken, nil)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.NoError(t, err)
@@ -52,14 +54,15 @@ func TestLoginUserUseCase_Execute_UserNotFound(t *testing.T) {
 
 	useCase := NewLoginUserUseCase(mockRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "password123"
 	notFoundError := errors.New("user not found")
 
-	mockRepo.On("FindByEmail", email).Return(nil, notFoundError)
+	mockRepo.On("FindByEmail", ctx, email).Return(nil, notFoundError)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.Error(t, err)
@@ -76,6 +79,7 @@ func TestLoginUserUseCase_Execute_InvalidPassword(t *testing.T) {
 
 	useCase := NewLoginUserUseCase(mockRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "wrongpassword"
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("correctpassword"), bcrypt.DefaultCost)
@@ -87,10 +91,10 @@ func TestLoginUserUseCase_Execute_InvalidPassword(t *testing.T) {
 		Password: &hashedPasswordStr,
 	}
 
-	mockRepo.On("FindByEmail", email).Return(existingUser, nil)
+	mockRepo.On("FindByEmail", ctx, email).Return(existingUser, nil)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.Error(t, err)
@@ -107,6 +111,7 @@ func TestLoginUserUseCase_Execute_TokenGenerationError(t *testing.T) {
 
 	useCase := NewLoginUserUseCase(mockRepo, mockTokenGen)
 
+	ctx := context.Background()
 	email := "test@example.com"
 	password := "password123"
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -119,11 +124,11 @@ func TestLoginUserUseCase_Execute_TokenGenerationError(t *testing.T) {
 		Password: &hashedPasswordStr,
 	}
 
-	mockRepo.On("FindByEmail", email).Return(existingUser, nil)
+	mockRepo.On("FindByEmail", ctx, email).Return(existingUser, nil)
 	mockTokenGen.On("GenerateToken", existingUser).Return("", tokenError)
 
 	// Act
-	token, err := useCase.Execute(email, password)
+	token, err := useCase.Execute(ctx, email, password)
 
 	// Assert
 	assert.Error(t, err)

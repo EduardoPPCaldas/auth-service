@@ -171,6 +171,12 @@ go mod tidy
 - Never log sensitive information (tokens, passwords)
 - Use bcrypt for password hashing
 
+### 11. Context
+- Always use context.Context as the first parameter for functions that need it
+- Pass context through the call stack
+- Use context for cancellation, deadlines, and passing request-scoped values
+- Never use background context for application logic
+
 ## Environment Variables
 Required environment variables:
 - `JWT_SECRET`: JWT signing secret
